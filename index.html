@@ -15,27 +15,33 @@
             font-family: 'Arial', sans-serif;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
         }
 
         .game-container {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 800px;
-            width: 100%;
+            border-radius: 0;
+            padding: 20px;
+            width: 100vw;
+            height: 100vh;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
         }
 
         .title {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
             background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
             -webkit-background-clip: text;
@@ -47,7 +53,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
+            flex: 1;
+            justify-content: center;
         }
 
         .game-info {
@@ -78,20 +86,22 @@
             margin-top: 5px;
         }
 
-        .level-btn {
-            padding: 5px 10px;
+        .level-select {
+            padding: 8px 12px;
             border: none;
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             cursor: pointer;
             background: rgba(255, 255, 255, 0.2);
             color: white;
             transition: all 0.2s ease;
+            margin-top: 5px;
+            width: 100%;
         }
 
-        .level-btn.active {
-            background: #4ecdc4;
-            transform: scale(1.1);
+        .level-select option {
+            background: #2a5298;
+            color: white;
         }
 
         .game-board {
@@ -99,11 +109,12 @@
             grid-template-columns: repeat(10, 1fr);
             gap: 1px;
             background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
+            padding: 8px;
             border-radius: 15px;
             width: 100%;
-            max-width: 350px;
-            aspect-ratio: 0.5;
+            max-width: 300px;
+            height: 50vh;
+            max-height: 600px;
         }
 
         .cell {
@@ -117,10 +128,10 @@
         }
 
         .controls {
-            margin-top: 20px;
+            margin-top: 10px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
             width: 100%;
             max-width: 350px;
@@ -141,15 +152,15 @@
         }
 
         .btn {
-            padding: 15px 20px;
+            padding: 12px 16px;
             border: none;
             border-radius: 12px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.3s ease;
             font-weight: bold;
             flex: 1;
-            max-width: 80px;
+            max-width: 70px;
         }
 
         .control-btn {
@@ -172,7 +183,8 @@
             color: white;
             width: 100%;
             max-width: 200px;
-            margin-top: 10px;
+            margin-top: 5px;
+            padding: 10px 16px;
         }
 
         .btn:hover {
@@ -299,17 +311,16 @@
         <div class="game-layout">
             <div class="game-info">
                 <div class="score-item">
-                    Skor
+                    Score
                     <div class="score-value" id="score">0</div>
                 </div>
                 <div class="score-item">
                     Level
-                    <div class="score-value" id="level">1</div>
-                    <div class="level-selector">
-                        <button class="level-btn active" onclick="setLevel(1)">1</button>
-                        <button class="level-btn" onclick="setLevel(2)">2</button>
-                        <button class="level-btn" onclick="setLevel(3)">3</button>
-                    </div>
+                    <select class="level-select" id="levelSelect" onchange="setLevel(this.value)">
+                        <option value="1">Easy</option>
+                        <option value="2">Medium</option>
+                        <option value="3">Hard</option>
+                    </select>
                 </div>
                 <div class="score-item">
                     Combo
@@ -325,53 +336,53 @@
                 <button class="btn control-btn" onclick="dropPiece()">⬇️</button>
                 <button class="btn control-btn" onclick="movePiece(-1)">⬅️</button>
                 <button class="btn control-btn" onclick="movePiece(1)">➡️</button>
-                <button class="btn control-btn" onclick="rotatePiece()">🔄</button>
+                <button class="btn control-btn" onclick="rotatePiece()">↻</button>
             </div>
 
             <div class="menu-controls">
                 <button class="btn pause-btn" onclick="togglePause()">⏸️ Pause</button>
-                <button class="btn new-game-btn" onclick="newGame()">🎯 Baru</button>
+                <button class="btn new-game-btn" onclick="newGame()">🎯 New Game</button>
             </div>
 
-            <button class="btn help-btn" onclick="showHelp()">❓ Cara Bermain</button>
+            <button class="btn help-btn" onclick="showHelp()">❓ How to Play</button>
         </div>
     </div>
 
     <div class="game-over" id="gameOver">
         <div class="game-over-content">
             <h2>🎮 GAME OVER!</h2>
-            <p style="margin: 20px 0;">Balok mencapai bagian atas!</p>
+            <p style="margin: 20px 0;">Blocks reached the top!</p>
             <div style="font-size: 1.2rem; margin: 20px 0;">
-                Skor Akhir: <span id="finalScore" style="color: #4ecdc4; font-weight: bold;">0</span>
+                Final Score: <span id="finalScore" style="color: #4ecdc4; font-weight: bold;">0</span>
             </div>
-            <button class="btn new-game-btn" onclick="newGame()">🔄 Main Lagi</button>
+            <button class="btn new-game-btn" onclick="newGame()">🔄 Play Again</button>
         </div>
     </div>
 
     <div class="help-modal" id="helpModal">
         <div class="help-content">
-            <h3>🎯 Cara Bermain</h3>
-            <p><strong>🎮 Kontrol:</strong></p>
-            <p>• ⬇️ Turunkan balok lebih cepat</p>
-            <p>• ⬅️➡️ Geser balok kiri/kanan</p>
-            <p>• 🔄 Putar balok 90 derajat</p>
+            <h3>🎯 How to Play</h3>
+            <p><strong>🎮 Controls:</strong></p>
+            <p>• ⬇️ Drop blocks faster</p>
+            <p>• ⬅️➡️ Move blocks left/right</p>
+            <p>• ↻ Rotate blocks 90 degrees</p>
             
-            <p><strong>🎯 Tujuan:</strong></p>
-            <p>• Susun balok agar tidak memenuhi papan</p>
-            <p>• Buat 3+ balok warna sama berjajar (horizontal/vertikal)</p>
-            <p>• Balok yang cocok akan hilang otomatis</p>
+            <p><strong>🎯 Objective:</strong></p>
+            <p>• Arrange blocks to prevent filling the board</p>
+            <p>• Create 3+ same color blocks in a row (horizontal/vertical)</p>
+            <p>• Matching blocks will disappear automatically</p>
             
-            <p><strong>⚡ Sistem Poin:</strong></p>
-            <p>• Setiap match = 100 poin</p>
-            <p>• Combo berturut-turut = bonus +50 poin</p>
-            <p>• Level tinggi = bonus tambahan</p>
+            <p><strong>⚡ Scoring System:</strong></p>
+            <p>• Each match = 100 points</p>
+            <p>• Consecutive combos = +50 bonus points</p>
+            <p>• Higher levels = additional bonus</p>
             
-            <p><strong>🏆 Level:</strong></p>
-            <p>• Level 1: Lambat (pemula)</p>
-            <p>• Level 2: Sedang (menengah)</p>
-            <p>• Level 3: Cepat (ahli)</p>
+            <p><strong>🏆 Difficulty:</strong></p>
+            <p>• Easy: Slow speed (beginners)</p>
+            <p>• Medium: Normal speed (intermediate)</p>
+            <p>• Hard: Fast speed (experts)</p>
             
-            <button class="close-btn" onclick="hideHelp()">Tutup</button>
+            <button class="close-btn" onclick="hideHelp()">Close</button>
         </div>
     </div>
 
@@ -806,12 +817,10 @@
         }
 
         function setLevel(newLevel) {
-            selectedLevel = newLevel;
+            selectedLevel = parseInt(newLevel);
             
-            // Update button states
-            document.querySelectorAll('.level-btn').forEach((btn, index) => {
-                btn.classList.toggle('active', index + 1 === newLevel);
-            });
+            // Update select value
+            document.getElementById('levelSelect').value = newLevel;
             
             // If game is active, restart with new level
             if (gameActive) {
@@ -859,5 +868,5 @@
         // Initialize game on load
         initGame();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cbcb2114c0a082',t:'MTc1NzQ3NDQ2OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cbda8ff5dadfc6',t:'MTc1NzQ3NTEwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
