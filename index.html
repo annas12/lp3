@@ -611,6 +611,8 @@
             
             if (canMovePiece(currentPiece, 0, 1)) {
                 currentPiece.y++;
+                // Play soft falling sound for the moving piece
+                playFallingSound(1);
                 renderBoard();
             } else {
                 placePiece();
@@ -672,27 +674,44 @@
                 
                 // Create gain node for background music volume control
                 backgroundMusicGain = ctx.createGain();
-                backgroundMusicGain.gain.setValueAtTime(0.1, ctx.currentTime); // Low volume for background
+                backgroundMusicGain.gain.setValueAtTime(0.15, ctx.currentTime); // Slightly higher volume for energy
                 backgroundMusicGain.connect(ctx.destination);
                 
-                // Create a simple melody loop with multiple oscillators
-                const melody = [
-                    { freq: 261.63, duration: 0.5 }, // C4
-                    { freq: 293.66, duration: 0.5 }, // D4
-                    { freq: 329.63, duration: 0.5 }, // E4
-                    { freq: 349.23, duration: 0.5 }, // F4
-                    { freq: 392.00, duration: 0.5 }, // G4
-                    { freq: 440.00, duration: 0.5 }, // A4
-                    { freq: 493.88, duration: 0.5 }, // B4
-                    { freq: 523.25, duration: 1.0 }  // C5
+                // Happy, energetic melody with upbeat rhythm
+                const happyMelody = [
+                    { freq: 523.25, duration: 0.3 }, // C5 - bright start
+                    { freq: 587.33, duration: 0.3 }, // D5
+                    { freq: 659.25, duration: 0.3 }, // E5
+                    { freq: 698.46, duration: 0.3 }, // F5
+                    { freq: 783.99, duration: 0.4 }, // G5 - higher energy
+                    { freq: 659.25, duration: 0.2 }, // E5 - quick bounce
+                    { freq: 783.99, duration: 0.4 }, // G5
+                    { freq: 880.00, duration: 0.6 }, // A5 - peak energy
+                    { freq: 783.99, duration: 0.3 }, // G5
+                    { freq: 659.25, duration: 0.3 }, // E5
+                    { freq: 523.25, duration: 0.4 }, // C5 - resolution
+                    { freq: 587.33, duration: 0.2 }, // D5 - quick
+                    { freq: 659.25, duration: 0.6 }  // E5 - happy ending
+                ];
+                
+                // Bass line for rhythm
+                const bassLine = [
+                    { freq: 130.81, duration: 0.6 }, // C3
+                    { freq: 146.83, duration: 0.6 }, // D3
+                    { freq: 164.81, duration: 0.6 }, // E3
+                    { freq: 130.81, duration: 0.6 }, // C3
+                    { freq: 196.00, duration: 0.6 }, // G3
+                    { freq: 164.81, duration: 0.6 }, // E3
+                    { freq: 130.81, duration: 1.2 }  // C3 - longer
                 ];
                 
                 let currentTime = ctx.currentTime;
                 
-                function playMelodyLoop() {
+                function playHappyMelodyLoop() {
                     if (!isMusicPlaying) return;
                     
-                    melody.forEach((note, index) => {
+                    // Play main melody with bright square wave
+                    happyMelody.forEach((note, index) => {
                         const oscillator = ctx.createOscillator();
                         const noteGain = ctx.createGain();
                         
@@ -700,12 +719,12 @@
                         noteGain.connect(backgroundMusicGain);
                         
                         oscillator.frequency.setValueAtTime(note.freq, currentTime);
-                        oscillator.type = 'sine';
+                        oscillator.type = 'square'; // Brighter, more energetic sound
                         
-                        // Envelope for smooth note transitions
+                        // Quick attack, sustain, quick release for bouncy feel
                         noteGain.gain.setValueAtTime(0, currentTime);
-                        noteGain.gain.linearRampToValueAtTime(0.3, currentTime + 0.1);
-                        noteGain.gain.linearRampToValueAtTime(0.1, currentTime + note.duration - 0.1);
+                        noteGain.gain.linearRampToValueAtTime(0.4, currentTime + 0.05);
+                        noteGain.gain.linearRampToValueAtTime(0.3, currentTime + note.duration - 0.05);
                         noteGain.gain.linearRampToValueAtTime(0, currentTime + note.duration);
                         
                         oscillator.start(currentTime);
@@ -714,17 +733,44 @@
                         currentTime += note.duration;
                     });
                     
+                    // Reset time for bass line
+                    let bassTime = ctx.currentTime;
+                    
+                    // Play bass line with sawtooth wave
+                    bassLine.forEach((note, index) => {
+                        const bassOsc = ctx.createOscillator();
+                        const bassGain = ctx.createGain();
+                        
+                        bassOsc.connect(bassGain);
+                        bassGain.connect(backgroundMusicGain);
+                        
+                        bassOsc.frequency.setValueAtTime(note.freq, bassTime);
+                        bassOsc.type = 'sawtooth'; // Rich bass sound
+                        
+                        // Steady bass rhythm
+                        bassGain.gain.setValueAtTime(0, bassTime);
+                        bassGain.gain.linearRampToValueAtTime(0.2, bassTime + 0.1);
+                        bassGain.gain.linearRampToValueAtTime(0.15, bassTime + note.duration - 0.1);
+                        bassGain.gain.linearRampToValueAtTime(0, bassTime + note.duration);
+                        
+                        bassOsc.start(bassTime);
+                        bassOsc.stop(bassTime + note.duration);
+                        
+                        bassTime += note.duration;
+                    });
+                    
                     // Schedule next loop
+                    const totalDuration = happyMelody.reduce((sum, note) => sum + note.duration, 0);
                     setTimeout(() => {
                         if (isMusicPlaying) {
                             currentTime = ctx.currentTime;
-                            playMelodyLoop();
+                            playHappyMelodyLoop();
                         }
-                    }, melody.reduce((sum, note) => sum + note.duration, 0) * 1000);
+                    }, totalDuration * 1000);
                 }
                 
                 isMusicPlaying = true;
-                playMelodyLoop();
+                playHappyMelodyLoop();
                 
             } catch (e) {
                 console.log('Background music not available');
@@ -762,6 +808,39 @@
                 
                 oscillator.start(ctx.currentTime);
                 oscillator.stop(ctx.currentTime + 0.15);
+            } catch (e) {
+                // Silently fail if audio context is not available
+            }
+        }
+
+        function playFallingSound(blockCount = 1) {
+            try {
+                const ctx = createAudioContext();
+                
+                // Create multiple soft falling sounds for each block
+                for (let i = 0; i < Math.min(blockCount, 5); i++) {
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    // Soft falling sound - like gentle wind or whoosh
+                    const baseFreq = 200 + (i * 30) + (Math.random() * 50);
+                    oscillator.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+                    oscillator.frequency.linearRampToValueAtTime(baseFreq * 0.7, ctx.currentTime + 0.1);
+                    oscillator.type = 'triangle'; // Soft, gentle sound
+                    
+                    // Very soft volume for continuous falling
+                    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.02);
+                    gainNode.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.08);
+                    gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+                    
+                    oscillator.start(ctx.currentTime + (i * 0.01));
+                    oscillator.stop(ctx.currentTime + 0.1 + (i * 0.01));
+                }
+                
             } catch (e) {
                 // Silently fail if audio context is not available
             }
@@ -949,6 +1028,7 @@
             // Keep applying gravity until no more blocks can fall
             while (hasChanged) {
                 hasChanged = false;
+                let blocksMovedThisStep = 0;
                 
                 // Check each column from bottom to top
                 for (let col = 0; col < BOARD_WIDTH; col++) {
@@ -969,6 +1049,7 @@
                                 board[row + fallDistance][col] = board[row][col];
                                 board[row][col] = 0;
                                 hasChanged = true;
+                                blocksMovedThisStep++;
                             }
                         }
                     }
@@ -976,6 +1057,8 @@
                 
                 // Update display during gravity animation
                 if (hasChanged) {
+                    // Play falling sound for each block that moved
+                    playFallingSound(blocksMovedThisStep);
                     renderBoard();
                     // Small delay to show falling animation
                     await new Promise(resolve => setTimeout(resolve, 50));
@@ -1143,5 +1226,5 @@
         // Initialize game on load
         initGame();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cc07e6a59edfc6',t:'MTc1NzQ3Njk1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cc16d985ddfd25',t:'MTc1NzQ3NzU2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
