@@ -500,6 +500,9 @@
             // Start game loop
             startGameLoop();
             
+            // Start background music
+            startBackgroundMusic();
+            
             // Update UI
             updateUI();
             
@@ -648,31 +651,117 @@
             updateUI();
         }
 
-        // Sound effect functions using Web Audio API
+        // Audio system with background music and sound effects
+        let audioContext = null;
+        let backgroundMusicGain = null;
+        let backgroundMusicOscillators = [];
+        let isMusicPlaying = false;
+
         function createAudioContext() {
-            if (typeof window.audioContext === 'undefined') {
-                window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
-            return window.audioContext;
+            return audioContext;
+        }
+
+        function startBackgroundMusic() {
+            if (isMusicPlaying) return;
+            
+            try {
+                const ctx = createAudioContext();
+                
+                // Create gain node for background music volume control
+                backgroundMusicGain = ctx.createGain();
+                backgroundMusicGain.gain.setValueAtTime(0.1, ctx.currentTime); // Low volume for background
+                backgroundMusicGain.connect(ctx.destination);
+                
+                // Create a simple melody loop with multiple oscillators
+                const melody = [
+                    { freq: 261.63, duration: 0.5 }, // C4
+                    { freq: 293.66, duration: 0.5 }, // D4
+                    { freq: 329.63, duration: 0.5 }, // E4
+                    { freq: 349.23, duration: 0.5 }, // F4
+                    { freq: 392.00, duration: 0.5 }, // G4
+                    { freq: 440.00, duration: 0.5 }, // A4
+                    { freq: 493.88, duration: 0.5 }, // B4
+                    { freq: 523.25, duration: 1.0 }  // C5
+                ];
+                
+                let currentTime = ctx.currentTime;
+                
+                function playMelodyLoop() {
+                    if (!isMusicPlaying) return;
+                    
+                    melody.forEach((note, index) => {
+                        const oscillator = ctx.createOscillator();
+                        const noteGain = ctx.createGain();
+                        
+                        oscillator.connect(noteGain);
+                        noteGain.connect(backgroundMusicGain);
+                        
+                        oscillator.frequency.setValueAtTime(note.freq, currentTime);
+                        oscillator.type = 'sine';
+                        
+                        // Envelope for smooth note transitions
+                        noteGain.gain.setValueAtTime(0, currentTime);
+                        noteGain.gain.linearRampToValueAtTime(0.3, currentTime + 0.1);
+                        noteGain.gain.linearRampToValueAtTime(0.1, currentTime + note.duration - 0.1);
+                        noteGain.gain.linearRampToValueAtTime(0, currentTime + note.duration);
+                        
+                        oscillator.start(currentTime);
+                        oscillator.stop(currentTime + note.duration);
+                        
+                        currentTime += note.duration;
+                    });
+                    
+                    // Schedule next loop
+                    setTimeout(() => {
+                        if (isMusicPlaying) {
+                            currentTime = ctx.currentTime;
+                            playMelodyLoop();
+                        }
+                    }, melody.reduce((sum, note) => sum + note.duration, 0) * 1000);
+                }
+                
+                isMusicPlaying = true;
+                playMelodyLoop();
+                
+            } catch (e) {
+                console.log('Background music not available');
+            }
+        }
+
+        function stopBackgroundMusic() {
+            isMusicPlaying = false;
+            if (backgroundMusicGain) {
+                backgroundMusicGain.disconnect();
+                backgroundMusicGain = null;
+            }
+            backgroundMusicOscillators.forEach(osc => {
+                try { osc.stop(); } catch (e) {}
+            });
+            backgroundMusicOscillators = [];
         }
 
         function playDropSound() {
             try {
-                const audioContext = createAudioContext();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+                const ctx = createAudioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
                 
                 oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(ctx.destination);
                 
-                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.1);
+                // Enhanced drop sound with more realistic thud
+                oscillator.frequency.setValueAtTime(150, ctx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.15);
+                oscillator.type = 'sawtooth';
                 
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
                 
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.1);
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.15);
             } catch (e) {
                 // Silently fail if audio context is not available
             }
@@ -680,21 +769,47 @@
 
         function playExplosionSound() {
             try {
-                const audioContext = createAudioContext();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+                const ctx = createAudioContext();
                 
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                // Create multiple oscillators for richer explosion sound
+                for (let i = 0; i < 3; i++) {
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    // Different frequencies for layered explosion effect
+                    const baseFreq = 300 + (i * 100);
+                    oscillator.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(30 + (i * 10), ctx.currentTime + 0.4);
+                    oscillator.type = i === 0 ? 'square' : i === 1 ? 'sawtooth' : 'triangle';
+                    
+                    gainNode.gain.setValueAtTime(0.3 - (i * 0.1), ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                    
+                    oscillator.start(ctx.currentTime + (i * 0.05));
+                    oscillator.stop(ctx.currentTime + 0.4 + (i * 0.05));
+                }
                 
-                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+                // Add white noise burst for explosion effect
+                const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+                const noiseData = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < noiseData.length; i++) {
+                    noiseData[i] = (Math.random() * 2 - 1) * 0.1;
+                }
                 
-                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                const noiseSource = ctx.createBufferSource();
+                const noiseGain = ctx.createGain();
+                noiseSource.buffer = noiseBuffer;
+                noiseSource.connect(noiseGain);
+                noiseGain.connect(ctx.destination);
                 
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.3);
+                noiseGain.gain.setValueAtTime(0.2, ctx.currentTime);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                
+                noiseSource.start(ctx.currentTime);
+                
             } catch (e) {
                 // Silently fail if audio context is not available
             }
@@ -951,11 +1066,21 @@
             isPaused = !isPaused;
             const btn = document.querySelector('.pause-btn');
             btn.textContent = isPaused ? '▶️ Resume' : '⏸️ Pause';
+            
+            // Pause/resume background music
+            if (isPaused) {
+                stopBackgroundMusic();
+            } else {
+                startBackgroundMusic();
+            }
         }
 
         function gameOver() {
             gameActive = false;
             if (dropTimer) clearInterval(dropTimer);
+            
+            // Stop background music
+            stopBackgroundMusic();
             
             document.getElementById('finalScore').textContent = score;
             document.getElementById('gameOver').style.display = 'flex';
@@ -1018,5 +1143,5 @@
         // Initialize game on load
         initGame();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cbf7fd37825f5f',t:'MTc1NzQ3NjMwNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cc07e6a59edfc6',t:'MTc1NzQ3Njk1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
