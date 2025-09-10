@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Blast! Modern</title>
+    <title>Block Blast!</title>
     <style>
         * {
             margin: 0;
@@ -149,6 +149,15 @@
             gap: 10px;
             justify-content: center;
             width: 100%;
+        }
+
+        .menu-controls .btn {
+            max-width: none;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .btn {
@@ -306,7 +315,7 @@
 </head>
 <body>
     <div class="game-container colors">
-        <h1 class="title">🎮 BLOCK BLAST!</h1>
+        <h1 class="title">🎮 BLOCK BLAST! MODERN</h1>
         
         <div class="game-layout">
             <div class="game-info">
@@ -605,7 +614,10 @@
             }
         }
 
-        function placePiece() {
+        async function placePiece() {
+            // Play drop sound
+            playDropSound();
+            
             // Place piece on board
             for (let row = 0; row < currentPiece.shape.length; row++) {
                 for (let col = 0; col < currentPiece.shape[row].length; col++) {
@@ -618,6 +630,9 @@
                     }
                 }
             }
+            
+            // Apply gravity first to settle all blocks
+            await applyGravity();
             
             // Check for matches and clear lines
             const clearedLines = checkMatches();
@@ -633,59 +648,160 @@
             updateUI();
         }
 
+        // Sound effect functions using Web Audio API
+        function createAudioContext() {
+            if (typeof window.audioContext === 'undefined') {
+                window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return window.audioContext;
+        }
+
+        function playDropSound() {
+            try {
+                const audioContext = createAudioContext();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                // Silently fail if audio context is not available
+            }
+        }
+
+        function playExplosionSound() {
+            try {
+                const audioContext = createAudioContext();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                // Silently fail if audio context is not available
+            }
+        }
+
         function checkMatches() {
             const toRemove = new Set();
             
-            // Check horizontal matches
+            // Check horizontal matches - only for settled blocks
             for (let row = 0; row < BOARD_HEIGHT; row++) {
                 let count = 1;
                 let currentColor = board[row][0];
+                let startCol = 0;
                 
                 for (let col = 1; col < BOARD_WIDTH; col++) {
                     if (board[row][col] === currentColor && currentColor !== 0) {
                         count++;
                     } else {
                         if (count >= 3 && currentColor !== 0) {
-                            for (let i = col - count; i < col; i++) {
-                                toRemove.add(`${row},${i}`);
+                            // Only remove if blocks are settled (can't fall further)
+                            let canRemove = true;
+                            for (let i = startCol; i < col; i++) {
+                                if (row < BOARD_HEIGHT - 1 && board[row + 1][i] === 0) {
+                                    canRemove = false;
+                                    break;
+                                }
+                            }
+                            if (canRemove || row === BOARD_HEIGHT - 1) {
+                                for (let i = startCol; i < col; i++) {
+                                    toRemove.add(`${row},${i}`);
+                                }
                             }
                         }
                         count = 1;
                         currentColor = board[row][col];
+                        startCol = col;
                     }
                 }
                 
                 if (count >= 3 && currentColor !== 0) {
-                    for (let i = BOARD_WIDTH - count; i < BOARD_WIDTH; i++) {
-                        toRemove.add(`${row},${i}`);
+                    // Check if last sequence can be removed
+                    let canRemove = true;
+                    for (let i = startCol; i < BOARD_WIDTH; i++) {
+                        if (row < BOARD_HEIGHT - 1 && board[row + 1][i] === 0) {
+                            canRemove = false;
+                            break;
+                        }
+                    }
+                    if (canRemove || row === BOARD_HEIGHT - 1) {
+                        for (let i = startCol; i < BOARD_WIDTH; i++) {
+                            toRemove.add(`${row},${i}`);
+                        }
                     }
                 }
             }
             
-            // Check vertical matches
+            // Check vertical matches - only for settled blocks
             for (let col = 0; col < BOARD_WIDTH; col++) {
                 let count = 1;
                 let currentColor = board[0][col];
+                let startRow = 0;
                 
                 for (let row = 1; row < BOARD_HEIGHT; row++) {
                     if (board[row][col] === currentColor && currentColor !== 0) {
                         count++;
                     } else {
                         if (count >= 3 && currentColor !== 0) {
-                            for (let i = row - count; i < row; i++) {
-                                toRemove.add(`${i},${col}`);
+                            // Only remove if blocks are settled
+                            let canRemove = true;
+                            for (let i = startRow; i < row; i++) {
+                                if (i < BOARD_HEIGHT - 1 && board[i + 1][col] === 0) {
+                                    canRemove = false;
+                                    break;
+                                }
+                            }
+                            if (canRemove) {
+                                for (let i = startRow; i < row; i++) {
+                                    toRemove.add(`${i},${col}`);
+                                }
                             }
                         }
                         count = 1;
                         currentColor = board[row][col];
+                        startRow = row;
                     }
                 }
                 
                 if (count >= 3 && currentColor !== 0) {
-                    for (let i = BOARD_HEIGHT - count; i < BOARD_HEIGHT; i++) {
-                        toRemove.add(`${i},${col}`);
+                    // Check if last sequence can be removed
+                    let canRemove = true;
+                    for (let i = startRow; i < BOARD_HEIGHT; i++) {
+                        if (i < BOARD_HEIGHT - 1 && board[i + 1][col] === 0) {
+                            canRemove = false;
+                            break;
+                        }
+                    }
+                    if (canRemove) {
+                        for (let i = startRow; i < BOARD_HEIGHT; i++) {
+                            toRemove.add(`${i},${col}`);
+                        }
                     }
                 }
+            }
+            
+            // Play explosion sound if blocks are removed
+            if (toRemove.size > 0) {
+                playExplosionSound();
             }
             
             // Remove matched blocks
@@ -696,24 +812,58 @@
             
             // Apply gravity
             if (toRemove.size > 0) {
-                applyGravity();
+                applyGravity().then(() => {
+                    // Check for new matches after gravity
+                    setTimeout(() => {
+                        const newMatches = checkMatches();
+                        if (newMatches > 0) {
+                            updateScore(newMatches);
+                            combo++;
+                            updateUI();
+                        }
+                    }, 100);
+                });
             }
             
             return Math.floor(toRemove.size / 3); // Return number of matches
         }
 
-        function applyGravity() {
-            for (let col = 0; col < BOARD_WIDTH; col++) {
-                let writePos = BOARD_HEIGHT - 1;
+        async function applyGravity() {
+            let hasChanged = true;
+            
+            // Keep applying gravity until no more blocks can fall
+            while (hasChanged) {
+                hasChanged = false;
                 
-                for (let row = BOARD_HEIGHT - 1; row >= 0; row--) {
-                    if (board[row][col] !== 0) {
-                        board[writePos][col] = board[row][col];
-                        if (writePos !== row) {
-                            board[row][col] = 0;
+                // Check each column from bottom to top
+                for (let col = 0; col < BOARD_WIDTH; col++) {
+                    for (let row = BOARD_HEIGHT - 2; row >= 0; row--) {
+                        if (board[row][col] !== 0) {
+                            // Find how far this block can fall
+                            let fallDistance = 0;
+                            for (let checkRow = row + 1; checkRow < BOARD_HEIGHT; checkRow++) {
+                                if (board[checkRow][col] === 0) {
+                                    fallDistance++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            // Move the block down if it can fall
+                            if (fallDistance > 0) {
+                                board[row + fallDistance][col] = board[row][col];
+                                board[row][col] = 0;
+                                hasChanged = true;
+                            }
                         }
-                        writePos--;
                     }
+                }
+                
+                // Update display during gravity animation
+                if (hasChanged) {
+                    renderBoard();
+                    // Small delay to show falling animation
+                    await new Promise(resolve => setTimeout(resolve, 50));
                 }
             }
         }
@@ -868,5 +1018,5 @@
         // Initialize game on load
         initGame();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cbda8ff5dadfc6',t:'MTc1NzQ3NTEwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cbf7fd37825f5f',t:'MTc1NzQ3NjMwNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
