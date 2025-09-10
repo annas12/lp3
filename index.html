@@ -674,44 +674,36 @@
                 
                 // Create gain node for background music volume control
                 backgroundMusicGain = ctx.createGain();
-                backgroundMusicGain.gain.setValueAtTime(0.15, ctx.currentTime); // Slightly higher volume for energy
+                backgroundMusicGain.gain.setValueAtTime(0.08, ctx.currentTime); // Lower volume for relaxing feel
                 backgroundMusicGain.connect(ctx.destination);
                 
-                // Happy, energetic melody with upbeat rhythm
-                const happyMelody = [
-                    { freq: 523.25, duration: 0.3 }, // C5 - bright start
-                    { freq: 587.33, duration: 0.3 }, // D5
-                    { freq: 659.25, duration: 0.3 }, // E5
-                    { freq: 698.46, duration: 0.3 }, // F5
-                    { freq: 783.99, duration: 0.4 }, // G5 - higher energy
-                    { freq: 659.25, duration: 0.2 }, // E5 - quick bounce
-                    { freq: 783.99, duration: 0.4 }, // G5
-                    { freq: 880.00, duration: 0.6 }, // A5 - peak energy
-                    { freq: 783.99, duration: 0.3 }, // G5
-                    { freq: 659.25, duration: 0.3 }, // E5
-                    { freq: 523.25, duration: 0.4 }, // C5 - resolution
-                    { freq: 587.33, duration: 0.2 }, // D5 - quick
-                    { freq: 659.25, duration: 0.6 }  // E5 - happy ending
+                // Relaxing, calm melody with slower rhythm
+                const relaxingMelody = [
+                    { freq: 261.63, duration: 1.0 }, // C4 - gentle start
+                    { freq: 293.66, duration: 0.8 }, // D4
+                    { freq: 329.63, duration: 1.2 }, // E4 - longer, peaceful
+                    { freq: 293.66, duration: 0.8 }, // D4
+                    { freq: 261.63, duration: 1.0 }, // C4
+                    { freq: 220.00, duration: 1.5 }, // A3 - lower, calming
+                    { freq: 246.94, duration: 1.0 }, // B3
+                    { freq: 261.63, duration: 2.0 }, // C4 - long, peaceful ending
                 ];
                 
-                // Bass line for rhythm
-                const bassLine = [
-                    { freq: 130.81, duration: 0.6 }, // C3
-                    { freq: 146.83, duration: 0.6 }, // D3
-                    { freq: 164.81, duration: 0.6 }, // E3
-                    { freq: 130.81, duration: 0.6 }, // C3
-                    { freq: 196.00, duration: 0.6 }, // G3
-                    { freq: 164.81, duration: 0.6 }, // E3
-                    { freq: 130.81, duration: 1.2 }  // C3 - longer
+                // Soft ambient pad for atmosphere
+                const ambientPad = [
+                    { freq: 130.81, duration: 4.0 }, // C3 - long sustained
+                    { freq: 164.81, duration: 4.0 }, // E3
+                    { freq: 196.00, duration: 4.0 }, // G3
+                    { freq: 130.81, duration: 4.0 }  // C3
                 ];
                 
                 let currentTime = ctx.currentTime;
                 
-                function playHappyMelodyLoop() {
+                function playRelaxingMelodyLoop() {
                     if (!isMusicPlaying) return;
                     
-                    // Play main melody with bright square wave
-                    happyMelody.forEach((note, index) => {
+                    // Play main melody with soft sine wave
+                    relaxingMelody.forEach((note, index) => {
                         const oscillator = ctx.createOscillator();
                         const noteGain = ctx.createGain();
                         
@@ -719,12 +711,12 @@
                         noteGain.connect(backgroundMusicGain);
                         
                         oscillator.frequency.setValueAtTime(note.freq, currentTime);
-                        oscillator.type = 'square'; // Brighter, more energetic sound
+                        oscillator.type = 'sine'; // Soft, gentle sound
                         
-                        // Quick attack, sustain, quick release for bouncy feel
+                        // Slow attack and release for smooth, relaxing feel
                         noteGain.gain.setValueAtTime(0, currentTime);
-                        noteGain.gain.linearRampToValueAtTime(0.4, currentTime + 0.05);
-                        noteGain.gain.linearRampToValueAtTime(0.3, currentTime + note.duration - 0.05);
+                        noteGain.gain.linearRampToValueAtTime(0.3, currentTime + 0.3);
+                        noteGain.gain.linearRampToValueAtTime(0.2, currentTime + note.duration - 0.3);
                         noteGain.gain.linearRampToValueAtTime(0, currentTime + note.duration);
                         
                         oscillator.start(currentTime);
@@ -733,44 +725,44 @@
                         currentTime += note.duration;
                     });
                     
-                    // Reset time for bass line
-                    let bassTime = ctx.currentTime;
+                    // Reset time for ambient pad
+                    let padTime = ctx.currentTime;
                     
-                    // Play bass line with sawtooth wave
-                    bassLine.forEach((note, index) => {
-                        const bassOsc = ctx.createOscillator();
-                        const bassGain = ctx.createGain();
+                    // Play ambient pad with triangle wave
+                    ambientPad.forEach((note, index) => {
+                        const padOsc = ctx.createOscillator();
+                        const padGain = ctx.createGain();
                         
-                        bassOsc.connect(bassGain);
-                        bassGain.connect(backgroundMusicGain);
+                        padOsc.connect(padGain);
+                        padGain.connect(backgroundMusicGain);
                         
-                        bassOsc.frequency.setValueAtTime(note.freq, bassTime);
-                        bassOsc.type = 'sawtooth'; // Rich bass sound
+                        padOsc.frequency.setValueAtTime(note.freq, padTime);
+                        padOsc.type = 'triangle'; // Warm, soft ambient sound
                         
-                        // Steady bass rhythm
-                        bassGain.gain.setValueAtTime(0, bassTime);
-                        bassGain.gain.linearRampToValueAtTime(0.2, bassTime + 0.1);
-                        bassGain.gain.linearRampToValueAtTime(0.15, bassTime + note.duration - 0.1);
-                        bassGain.gain.linearRampToValueAtTime(0, bassTime + note.duration);
+                        // Very gentle ambient pad
+                        padGain.gain.setValueAtTime(0, padTime);
+                        padGain.gain.linearRampToValueAtTime(0.1, padTime + 1.0);
+                        padGain.gain.linearRampToValueAtTime(0.08, padTime + note.duration - 1.0);
+                        padGain.gain.linearRampToValueAtTime(0, padTime + note.duration);
                         
-                        bassOsc.start(bassTime);
-                        bassOsc.stop(bassTime + note.duration);
+                        padOsc.start(padTime);
+                        padOsc.stop(padTime + note.duration);
                         
-                        bassTime += note.duration;
+                        padTime += note.duration;
                     });
                     
                     // Schedule next loop
-                    const totalDuration = happyMelody.reduce((sum, note) => sum + note.duration, 0);
+                    const totalDuration = relaxingMelody.reduce((sum, note) => sum + note.duration, 0);
                     setTimeout(() => {
                         if (isMusicPlaying) {
                             currentTime = ctx.currentTime;
-                            playHappyMelodyLoop();
+                            playRelaxingMelodyLoop();
                         }
                     }, totalDuration * 1000);
                 }
                 
                 isMusicPlaying = true;
-                playHappyMelodyLoop();
+                playRelaxingMelodyLoop();
                 
             } catch (e) {
                 console.log('Background music not available');
@@ -1171,6 +1163,11 @@
 
         function newGame() {
             if (dropTimer) clearInterval(dropTimer);
+            
+            // Hide game over modal first
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // Then initialize new game
             initGame();
         }
 
@@ -1226,5 +1223,5 @@
         // Initialize game on load
         initGame();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cc16d985ddfd25',t:'MTc1NzQ3NzU2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cc204d32e0fd25',t:'MTc1NzQ3Nzk1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
